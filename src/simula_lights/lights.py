@@ -16,6 +16,7 @@ You can also specify brightness or color with a range 0-4:
     lights.py ROOM color 3
 
 """
+
 import sys
 from io import BytesIO
 import time
@@ -24,17 +25,18 @@ import click
 import numpy as np
 from PIL import Image
 from selenium import webdriver
+from selenium.webdriver.chrome.options import ChromiumOptions
 from selenium.webdriver.common.action_chains import ActionChains
 
 
 def setup_driver(url):
     """Connect to the light-control page"""
     print(f"Connecting to {url}")
-    options = webdriver.ChromeOptions()
-    options.headless = True
-    options.add_argument("window-size=500x500")
-
-    driver = webdriver.Chrome(options=options)
+    options = ChromiumOptions()
+    options.add_argument("--headless=new")
+    service = webdriver.ChromeService()
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.set_window_size(500, 500)
     driver.implicitly_wait(10)
     driver.get(url)
     return driver
@@ -91,7 +93,8 @@ def wait_for_page(driver):
 
 def click_location(driver, location_name, index=None):
     """Click a given location on the app"""
-    size = driver.get_window_size()
+    canvas = driver.find_element(by="id", value="background")
+    size = canvas.size
     loc_percent = locations[location_name]
     name = location_name
     if index is not None:
@@ -100,21 +103,14 @@ def click_location(driver, location_name, index=None):
     elif isinstance(loc_percent, list):
         # default to the middle
         loc_percent = loc_percent[2]
-    x = loc_percent[0] * size["width"]  # - canvas.location["x"]
-    y = loc_percent[1] * size["height"]  # - canvas.location["y"]
+    x = loc_percent[0] * size["width"] - size["width"] // 2
+    y = loc_percent[1] * size["height"] - size["height"] // 2
 
-    print(f"Clicking {name}")
+    print(f"Clicking {name} ({loc_percent=}) ({x=}, {y=})")
 
-    canvas = driver.find_element(by="id", value="background")
-
-    actions = ActionChains(driver)
-    # starts at center
-    action = actions.move_to_element(canvas)
-    # back to 0 (no absolute moves ?!)
-    action.move_by_offset(-canvas.size["width"] // 2, -canvas.size["height"] // 2)
-    action.move_by_offset(x, y)
-    action.click()
-    action.perform()
+    ActionChains(driver).move_to_element(canvas).move_by_offset(x, y).click().perform()
+    # Sleep for two seconds
+    time.sleep(5.0)
 
 
 @click.command()
