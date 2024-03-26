@@ -25,6 +25,7 @@ import click
 import numpy as np
 from PIL import Image
 from selenium import webdriver
+import chromedriver_binary
 from selenium.webdriver.chrome.options import ChromiumOptions
 from selenium.webdriver.common.action_chains import ActionChains
 
@@ -33,8 +34,20 @@ def setup_driver(url):
     """Connect to the light-control page"""
     print(f"Connecting to {url}")
     options = ChromiumOptions()
-    options.add_argument("--headless=new")
-    service = webdriver.ChromeService()
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    options.add_experimental_option(
+        "excludeSwitches", ["enable-automation", "enable-logging"]
+    )
+    options.add_experimental_option("useAutomationExtension", False)
+
+    # See https://stackoverflow.com/questions/72111139/this-version-of-chromedriver-only-supports-chrome-version-102
+    print(chromedriver_binary.chromedriver_filename)
+    service = webdriver.ChromeService(chromedriver_binary.chromedriver_filename)
+    driver = webdriver.Chrome(service=service, options=options)
+
     driver = webdriver.Chrome(service=service, options=options)
     driver.set_window_size(500, 500)
     driver.implicitly_wait(10)
